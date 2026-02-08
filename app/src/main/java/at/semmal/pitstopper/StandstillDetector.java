@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -15,6 +16,8 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
+
+import java.util.Locale;
 
 /**
  * Detects when the device has been standing still (not moving) for a specified duration.
@@ -27,6 +30,8 @@ import com.google.android.gms.location.Priority;
  * 4. Listener's onStandstillDetected() called when car stops for required duration
  */
 public class StandstillDetector {
+
+    private static final String TAG = "StandstillDetector";
 
     /**
      * Listener interface for standstill detection events.
@@ -99,6 +104,10 @@ public class StandstillDetector {
         if (location.hasSpeed()) {
             speed = location.getSpeed();
         }
+
+        // Log current speed for debugging
+        Log.d(TAG, String.format(Locale.US, "Speed: %.2f m/s (%.1f km/h) | hasSpeed: %b | isStill: %b | reported: %b",
+                speed, speed * 3.6f, location.hasSpeed(), isCurrentlyStandstill, standstillReported));
 
         // Check if below standstill threshold
         if (speed < STANDSTILL_SPEED_THRESHOLD_MS) {
