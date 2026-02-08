@@ -1,6 +1,8 @@
 package at.semmal.pitstopper;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -10,12 +12,17 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
@@ -23,6 +30,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "PitStopper";
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 
     private TextView textCurrentTime;
     private TextView textCountdown;
@@ -36,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
 
     private PitWindowPreferences preferences;
     private PitWindowAlertManager alertManager;
+    private StandstillDetector standstillDetector;
+    private boolean wasInAlertState = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,8 +85,57 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+        // Initialize StandstillDetector for GPS-based pit stop detection
+        standstillDetector = new StandstillDetector(this, new StandstillDetector.StandstillListener() {
+            @Override
+            public void onStandstillDetected() {
+                Log.i(TAG, "Standstill detected - car stopped in pits, clearing alert");
+                runOnUiThread(() -> {
+                    alertManager.clearAlert();
+                    Toast.makeText(MainActivity.this, "Pit stop detected - alert cleared", Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onMovementDetected() {
+                Log.i(TAG, "Movement detected - car is moving again");
+                // Note: Alert won't resume automatically (it's cleared for this window)
+            }
+        });
+
+        // Request location permissions
+        checkAndRequestLocationPermission();
+
         // Enable fullscreen immersive mode
         hideSystemUI();
+    }
+
+    /**
+     * Check for location permission and request if not granted.
+     */
+    private void checkAndRequestLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Permission not granted, request it
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    LOCATION_PERMISSION_REQUEST_CODE);
+        } else {
+            Log.i(TAG, "Location permission already granted");
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.i(TAG, "Location permission granted");
+            } else {
+                Log.w(TAG, "Location permission denied - GPS auto-clear will not work");
+                Toast.makeText(this, "Location permission denied - GPS auto-pause disabled", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     @Override
@@ -84,11 +143,14 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         // Reload settings and recreate alert manager (settings might have changed)
         alertManager = new PitWindowAlertManager(
-            preferences.getRaceStartHour(),
-            preferences.getRaceStartMinute(),
-            preferences.getPitWindowOpens(),
-            preferences.getPitWindowDuration()
+                preferences.getRaceStartHour(),
+                preferences.getRaceStartMinute(),
+                preferences.getPitWindowOpens(),
+                preferences.getPitWindowDuration()
         );
+
+        // Reset alert state tracking
+        wasInAlertState = false;
 
         // Start updating the clock when activity becomes visible
         updateTime(); // Update immediately
@@ -100,6 +162,11 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
         // Stop updating the clock when activity is no longer visible
         handler.removeCallbacks(updateTimeRunnable);
+
+        // Stop GPS monitoring to save battery
+        if (standstillDetector != null) {
+            standstillDetector.stopMonitoring();
+        }
     }
 
     @Override
@@ -123,6 +190,9 @@ public class MainActivity extends AppCompatActivity {
 
         // Check alert state
         PitWindowAlertManager.AlertState alertState = alertManager.getAlertState(currentHour, currentMinute);
+
+        // Start/stop GPS monitoring based on alert state
+        handleGpsMonitoring(alertState);
 
         // Update progress bar using alert manager
         int stageProgress = alertManager.getProgressInCurrentStage(currentHour, currentMinute, currentSecond);
@@ -164,7 +234,37 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * Manages GPS monitoring based on alert state.
+     * Starts monitoring when entering ON_ALERT state, stops when exiting.
+     *
+     * @param alertState Current alert state
+     */
+    private void handleGpsMonitoring(PitWindowAlertManager.AlertState alertState) {
+        boolean isInAlertState = (alertState == PitWindowAlertManager.AlertState.ON_ALERT);
+
+        if (isInAlertState && !wasInAlertState) {
+            // Just entered ON_ALERT state - start GPS monitoring
+            Log.i(TAG, "Entering pit window - starting GPS monitoring for standstill detection");
+            if (standstillDetector != null) {
+                boolean started = standstillDetector.startMonitoring();
+                if (!started) {
+                    Log.w(TAG, "Failed to start GPS monitoring - permission may not be granted");
+                }
+            }
+        } else if (!isInAlertState && wasInAlertState) {
+            // Just exited ON_ALERT state - stop GPS monitoring
+            Log.i(TAG, "Exiting pit window - stopping GPS monitoring");
+            if (standstillDetector != null) {
+                standstillDetector.stopMonitoring();
+            }
+        }
+
+        wasInAlertState = isInAlertState;
+    }
+
+    /**
      * Updates the progress bar height based on the progress percentage.
+     *
      * @param progress Progress value from 0 to 100
      */
     private void updateProgressBar(int progress) {

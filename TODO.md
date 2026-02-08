@@ -134,15 +134,16 @@
 ## Phase 4: Future Enhancements (Optional - "If we have time")
 
 ### 4.1 GPS Integration for Auto-Pause
-- [ ] Add Google Play Services Location dependency
-- [ ] Create `LocationManager.java` helper class
-- [ ] Request location permissions at runtime
-- [ ] Implement GPS speed monitoring
-- [ ] Define threshold for "standstill" (e.g., < 5 km/h for 10 seconds)
-- [ ] Auto-pause flash alert when vehicle stops
-- [ ] Resume alert if vehicle doesn't remain stopped
-- [ ] Add GPS status indicator in UI
-- [ ] Test GPS accuracy and battery impact
+- [x] Add Google Play Services Location dependency
+- [x] Create `StandstillDetector.java` helper class (uses Location.getSpeed())
+- [x] Add location permissions to AndroidManifest.xml
+- [x] Implement GPS speed monitoring using FusedLocationProviderClient
+- [x] Define threshold for "standstill" (< 5.4 km/h / 1.5 m/s for 5 seconds)
+- [x] Request location permissions at runtime (in MainActivity)
+- [x] Auto-pause flash alert when vehicle stops (integrated with PitWindowAlertManager.clearAlert())
+- [x] GPS monitoring only active during ON_ALERT state (battery efficient)
+- [ ] Add GPS status indicator in UI (optional)
+- [ ] Test GPS accuracy and battery impact (requires real device testing)
 
 ### 4.2 Enhanced Configuration
 - [ ] Create Settings screen/dialog
