@@ -1,8 +1,10 @@
 package at.semmal.pitstopper;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
@@ -15,6 +17,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
 
     private TextView textCurrentTime;
+    private ImageButton buttonSettings;
     private Handler handler;
     private Runnable updateTimeRunnable;
     private SimpleDateFormat timeFormat;
@@ -26,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialize views
         textCurrentTime = findViewById(R.id.textCurrentTime);
+        buttonSettings = findViewById(R.id.buttonSettings);
 
         // Initialize time format (24-hour format for racing)
         timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
@@ -43,9 +47,17 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
+        // Set up settings button click listener
+        buttonSettings.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
+        });
+
         // Enable fullscreen immersive mode
         hideSystemUI();
     }
+
+    // ...existing code...
 
     @Override
     protected void onResume() {

@@ -47,13 +47,17 @@
 ## Phase 2: Driver Swap Alert System (Core Feature)
 
 ### 2.1 Alert Configuration Model
-- [ ] Create `SwapAlertConfig.java` class to store:
-  - Alert window duration (default: 20 minutes)
-  - Warning start time (e.g., 18 minutes - 2 min before swap)
+- [x] Create settings UI with configuration options
+- [x] Add time picker for race start time
+- [x] Add pit window opens after (minutes) configuration
+- [x] Add pit window duration (minutes) configuration
+- [ ] Create `PitWindowConfig.java` class to store:
+  - Race start time (hour, minute)
+  - Pit window opens after (minutes from race start)
+  - Pit window duration (minutes)
   - Flash animation parameters (duration, intensity)
   - Sound/vibration settings (optional)
 - [ ] Create SharedPreferences helper for persisting settings
-- [ ] Add ability to configure alert window (e.g., 15, 20, 30 minutes)
 
 ### 2.2 Timer Management
 - [ ] Create `SwapTimerManager.java` service/class to handle:
@@ -252,7 +256,18 @@ lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtim
 ✅ Clock updates every second with proper lifecycle management  
 ✅ Clock stops updating when app is paused (battery efficient)  
 ✅ Clock resumes updating when app is visible  
+✅ Settings button (cog icon) added to top right corner  
+✅ SettingsActivity created with pit window configuration UI  
+✅ Time picker for race start time (e.g., 09:00)  
+✅ Pit window opens after X minutes configuration (e.g., 17 minutes)  
+✅ Pit window duration configuration (e.g., 6 minutes)  
+✅ Input validation implemented  
+✅ SharedPreferences fully integrated - settings persist across app restarts  
+✅ PitWindowPreferences helper class created  
+✅ Settings load defaults on first launch (09:00, 17min, 6min)  
+✅ Settings persist even if app is force closed  
+✅ Example: Race start 09:00 + 17min = alert from 09:17 to 09:23 (17+6)  
 ✅ App builds successfully  
-⏳ Ready to begin **Phase 2: Driver Swap Alert System**
+⏳ Working on **Phase 2: Driver Swap Alert System** - Next: Timer management and alert triggering
 
 
